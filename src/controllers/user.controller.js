@@ -84,8 +84,16 @@ const loginUser = asyncHandler(async (req, res, next) => {
     $or: [{ userName: userName?.toLowerCase() }, { email }],
   }).select("+password");
 
-  if (!user || !(await user.isPasswordMatched(password))) {
-    throw new ApiError("Invalid email or password", 401);
+  if (!user) {
+    throw new ApiError(
+      400,
+      "User does not exist. Please register yourself first"
+    );
+  }
+
+  const isPasswordCorrect = await user.isPasswordMatched(password);
+  if (!isPasswordCorrect) {
+    throw new ApiError(401, "Invalid email or password");
   }
 
   const { accessToken, refreshToken } =
