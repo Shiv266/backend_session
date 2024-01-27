@@ -22,4 +22,16 @@ app.use(express.urlencoded({ extended: true, limit: "20kb" }));
 app.use(express.static("public"));
 app.use(cookieParser());
 
+// routes import
+import userRouter from "./routes/user.routes.js";
+
+app.use("/api/v1/users", userRouter);
+app.use((err, req, res, next) => {
+  res.status(err.statusCode || 500).json({
+    status: "error",
+    statusCode: err.statusCode || 500,
+    message: err.message,
+  });
+});
+
 export { app };

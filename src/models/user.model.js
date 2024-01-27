@@ -29,9 +29,6 @@ const userSchema = new Schema(
       type: String, // will use cloudinary image url
       required: [true, "Avatar is required"],
     },
-    coverImage: {
-      type: String,
-    },
     watchHistory: [
       {
         type: Schema.Types.ObjectId,
@@ -41,9 +38,11 @@ const userSchema = new Schema(
     password: {
       type: String,
       required: [true, "Password is required"],
+      select: false, // will not return password in response
     },
     refreshToken: {
       type: String,
+      select: false,
     },
   },
   { timestamps: true } // will give createdAt and updatedAt fields
