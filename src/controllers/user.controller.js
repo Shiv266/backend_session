@@ -4,6 +4,7 @@ import { User } from "../models/user.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinaryService.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { generateAccessAndRefreshToken } from "../utils/generateTokens.js";
+import jwt from "jsonwebtoken";
 
 const cookieOptions = {
   httpOnly: true,
@@ -131,4 +132,39 @@ const logoutUser = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, {}, "User logged out successfully"));
 });
 
-export { registerUser, loginUser, logoutUser };
+//TODO : when we give new access and refresh token , we need to blacklist all the old refresh token for that user
+const refreshTokenAccess = asyncHandler(async (req, res) => {
+  const incomingRefreshToken =
+    req.cookies?.refreshToken || req.body?.refreshToken;
+  if (!incomingRefreshToken) {
+    throw new ApiError(401, "Unauthorized access");
+  }
+  const decoded = jwt.verify(
+    incomingRefreshToken,
+    process.env.REFRESH_TOKEN_SECRET
+  );
+  const user = await User.findById(decoded._id);
+  if (!user) {
+    throw new ApiError(401, "Invalid refresh token");
+  }
+  const { accessToken, refreshToken: newRefreshToken } =
+    await generateAccessAndRefreshToken(user);
+  console.log("accessToken", accessToken);
+  console.log("newRefreshToken", newRefreshToken);
+  return res
+    .status(200)
+    .cookie("accessToken", accessToken, cookieOptions)
+    .cookie("refreshToken", newRefreshToken, cookieOptions)
+    .json(
+      new ApiResponse(
+        200,
+        {
+          accessToken,
+          refreshToken: newRefreshToken,
+        },
+        "Token refreshed successfully"
+      )
+    );
+});
+
+export { registerUser, loginUser, logoutUser, refreshTokenAccess };
