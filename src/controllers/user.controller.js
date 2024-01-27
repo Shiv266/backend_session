@@ -3,6 +3,12 @@ import { ApiError } from "../utils/ApiError.js";
 import { User } from "../models/user.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinaryService.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
+import { generateAccessAndRefreshToken } from "../utils/generateTokens.js";
+
+const cookieOptions = {
+  httpOnly: true,
+  secure: true,
+};
 
 const registerUser = asyncHandler(async (req, res, next) => {
   // Register User Steps:
@@ -59,4 +65,51 @@ const registerUser = asyncHandler(async (req, res, next) => {
     .json(new ApiResponse(200, userObject, "User registered successfully"));
 });
 
-export { registerUser };
+const loginUser = asyncHandler(async (req, res, next) => {
+  // Login User Steps:
+  // 1. Get login details from frontend
+  // 2. Validate login details
+  // 3. Check if user exists : username and email
+  // 4. Check if password is correct
+  // 5. Generate access and refresh token
+  // 6. Send cookies
+
+  const { userName, email, password } = req.body;
+  if (!userName && !email) {
+    throw new ApiError(400, "Username or password is required");
+  }
+
+  const user = await User.findOne({
+    $or: [{ userName: userName?.toLowerCase() }, { email }],
+  }).select("+password");
+
+  if (!user || !(await user.isPasswordMatched(password))) {
+    throw new ApiError("Invalid email or password", 401);
+  }
+
+  const { accessToken, refreshToken } =
+    await generateAccessAndRefreshToken(user);
+
+  res
+    .status(200)
+    .cookie("accessToken", accessToken, cookieOptions)
+    .cookie("refreshToken", refreshToken, cookieOptions)
+    .json(
+      new ApiResponse(
+        200,
+        {
+          user: {
+            userName: user.userName,
+            email: user.email,
+            fullName: user.fullName,
+            avatar: user.avatar,
+          },
+          accessToken,
+          refreshToken,
+        },
+        "User logged in successfully"
+      )
+    );
+});
+
+export { registerUser, loginUser };
